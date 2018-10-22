@@ -37,9 +37,17 @@ def is_urxvt_color_conf_line(line):
 def apply_configs(terminal):
     if (terminal == "urxvt"):
         subprocess.call("xrdb", HOMEDIR + "/.Xdefaults")
+    elif (terminal == "gnome-terminal"):
+        sub_in = open("gterm_conf.txt", "r")
+        subprocess.Popen(["dconf", "load", "/org/gnome/terminal/"], stdin = sub_in)
+        sub_in.flush()
+        sub_in.close()
+    #equalivalent to dconf load /org/gnome/terminal/ < gterm_conf.txt
+    #https://askubuntu.com/questions/967517/backup-gnome-terminal
 
 
-TERMINAL = "xfce-terminal"
+
+TERMINAL = "gnome-terminal"
 HOMEDIR = str(pathlib.Path.home())
 
 pywal_conf = open(HOMEDIR + "/.cache/wal/colors", "r")
@@ -88,6 +96,24 @@ elif TERMINAL == "urxvt":
             lines[i] = "*.foreground:" + color_list[len(color_list)-1]
         elif (lines[i][:len("*.background:")] == "*.background:"):
             lines[i] = "*.foreground:" + color_list[0]
+
+
+elif TERMINAL == "gnome-terminal":
+    #gnome-terminal
+
+    #dconf dump /org/gnome/terminal/
+    content = subprocess.check_output(["dconf", "dump", "/org/gnome/terminal/"])
+    if not content: exit()
+
+    conf_fd = open("gterm_conf.txt", "w+")
+    new_palette = "palette=['" + "', '".join(color_list) + "']"
+
+    lines = content.splitlines()
+    for i in range(len(lines)):
+        lines[i] = lines[i].decode("utf-8")
+        if (lines[i][:len("palette=[")] == "palette=["):
+            lines[i] = new_palette
+
 
 
 new_conf = "\n".join(lines)
