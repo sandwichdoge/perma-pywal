@@ -34,7 +34,7 @@ def is_urxvt_color_conf_line(line):
     return None
 
 
-#Apply configs and refresh terminal if possible
+#Apply configs and reload terminal if possible
 def apply_configs(terminal):
     if (terminal == "urxvt"):
         subprocess.call("xrdb", HOMEDIR + "/.Xdefaults")
@@ -49,7 +49,7 @@ def apply_configs(terminal):
 
 
 #MAIN
-SUPPORTED_TERMINALS = ["xfce-terminal", "urxvt", "gnome-terminal"]
+SUPPORTED_TERMINALS = ["xfce-terminal", "urxvt", "gnome-terminal", "terminator"]
 HOMEDIR = str(pathlib.Path.home())
 print("What's your terminal?", SUPPORTED_TERMINALS)
 TERMINAL = input()
@@ -64,15 +64,17 @@ pywal_conf.close()
 
 color_list = colors_str.splitlines()
 total = len(color_list)
+print(color_list)
 
 if TERMINAL == "xfce-terminal":
     #XFCE-terminal
-    fcopy(HOMEDIR + "/.config/xfce4/terminal/terminalrc", HOMEDIR + "/.config/xfce4/terminal/terminalrc.bak")
+    config_path = HOMEDIR + "/.config/xfce4/terminal/terminalrc"
+    fcopy(config_path, config_path + ".bak")
 
-    with open(HOMEDIR + "/.config/xfce4/terminal/terminalrc", "r") as conf_fd:
+    with open(config_path, "r") as conf_fd:
         content = conf_fd.read()
 
-    conf_fd = open(HOMEDIR + "/.config/xfce4/terminal/terminalrc", "w+")
+    conf_fd = open(config_path, "w+")
     new_palette = "ColorPalette=" + ";".join(color_list)
 
     lines = content.splitlines()
@@ -87,12 +89,13 @@ if TERMINAL == "xfce-terminal":
 
 elif TERMINAL == "urxvt":
     #urxvt
-    fcopy(HOMEDIR + "/.Xdefaults", HOMEDIR + "/.Xdefaults.bak")
+    config_path = HOMEDIR + "/.Xdefaults"
+    fcopy(config_path, config_path + ".bak")
 
-    with open(HOMEDIR + "/.Xdefaults", "r") as conf_fd:
+    with open(config_path, "r") as conf_fd:
         content = conf_fd.read()
     
-    conf_fd = open(HOMEDIR + "/.Xdefaults", "w+")
+    conf_fd = open(config_path, "w+")
 
     lines = content.splitlines()
     for i in range(len(lines)):
@@ -102,7 +105,7 @@ elif TERMINAL == "urxvt":
         elif (lines[i][:len("*.foreground:")] == "*.foreground:"):
             lines[i] = "*.foreground:" + color_list[len(color_list)-1]
         elif (lines[i][:len("*.background:")] == "*.background:"):
-            lines[i] = "*.foreground:" + color_list[0]
+            lines[i] = "*.background:" + color_list[0]
 
 
 elif TERMINAL == "gnome-terminal":
@@ -122,11 +125,33 @@ elif TERMINAL == "gnome-terminal":
             lines[i] = new_palette
 
 
+elif TERMINAL == "terminator":
+    #terminator
+    config_path = HOMEDIR + "/.config/terminator/config"
+    fcopy(config_path, config_path + ".bak")
+
+    with open(config_path, "r") as conf_fd:
+        content = conf_fd.read()
+
+    conf_fd = open(config_path, "w+")
+    new_palette = 'palette = "' + ':'.join(color_list) + '"'
+
+    lines = content.splitlines()
+    for i in range(len(lines)):
+        lines[i] = lines[i].strip(' ')
+        if (lines[i][:len('palette = "')] == 'palette = "'):
+            lines[i] = new_palette
+        elif (lines[i][:len('foreground_color = "')] == 'foreground_color = "'):
+            lines[i] = 'foreground_color = "' + color_list[len(color_list)-1] + '"'
+        elif (lines[i][:len('background_color = "')] == 'background_color = "'):
+            lines[i] = 'background_color = "' + color_list[0] + '"'
+
+
 new_conf = "\n".join(lines)
 conf_fd.write(new_conf)
 conf_fd.close()
 
-apply_configs(TERMINAL) #apply configs and possibly refresh terminal settings
+apply_configs(TERMINAL) #apply configs and possibly reload terminal settings
 
 
 print("Done. If there's no effect, try restarting your terminal.")
