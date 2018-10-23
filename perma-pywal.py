@@ -14,7 +14,7 @@ IMPORTANT
 >It's best to run this on an already working terminal config, this will not magically fix your broken terminal
 
 SUPPORTED TERMINALS SO FAR:
-xfce-terminal, urxvt, gnome-terminal
+xfce-terminal, urxvt, gnome-terminal, terminator
 '''
 
 
@@ -36,8 +36,8 @@ def is_urxvt_color_conf_line(line):
 
 #Apply configs and reload terminal if possible
 def apply_configs(terminal):
-    if (terminal == "urxvt"):
-        subprocess.call("xrdb", HOMEDIR + "/.Xdefaults")
+    if (terminal == "urxvt" or terminal == "xterm"):
+        subprocess.call("xrdb", HOMEDIR + "/.Xresources")
     elif (terminal == "gnome-terminal"):
         sub_in = open("gterm_conf.txt", "r")
         subprocess.Popen(["dconf", "load", "/org/gnome/terminal/"], stdin = sub_in)
@@ -49,7 +49,7 @@ def apply_configs(terminal):
 
 
 #MAIN
-SUPPORTED_TERMINALS = ["xfce-terminal", "urxvt", "gnome-terminal", "terminator"]
+SUPPORTED_TERMINALS = ["xfce-terminal", "urxvt", "xterm", "gnome-terminal", "terminator"]
 HOMEDIR = str(pathlib.Path.home())
 print("What's your terminal?", SUPPORTED_TERMINALS)
 TERMINAL = input()
@@ -64,7 +64,7 @@ pywal_conf.close()
 
 color_list = colors_str.splitlines()
 total = len(color_list)
-print(color_list)
+#print(color_list)
 
 if TERMINAL == "xfce-terminal":
     #XFCE-terminal
@@ -87,9 +87,9 @@ if TERMINAL == "xfce-terminal":
             lines[i] = "ColorBackground=" + color_list[0]
             
 
-elif TERMINAL == "urxvt":
+elif TERMINAL == "urxvt" or TERMINAL == "xterm":
     #urxvt
-    config_path = HOMEDIR + "/.Xdefaults"
+    config_path = HOMEDIR + "/.Xresources"
     fcopy(config_path, config_path + ".bak")
 
     with open(config_path, "r") as conf_fd:
@@ -111,6 +111,7 @@ elif TERMINAL == "urxvt":
 elif TERMINAL == "gnome-terminal":
     #gnome-terminal
 
+    palette_exists = 0 #whether palette has been set in config file
     #dconf dump /org/gnome/terminal/
     content = subprocess.check_output(["dconf", "dump", "/org/gnome/terminal/"])
     if not content: exit()
@@ -123,6 +124,17 @@ elif TERMINAL == "gnome-terminal":
         lines[i] = lines[i].decode("utf-8")
         if (lines[i][:len("palette=[")] == "palette=["):
             lines[i] = new_palette
+            palette_exists = 1
+        elif (lines[i][:len("foreground-color=")] == "foreground-color="):
+            lines[i] = "foreground-color='" + color_list[len(color_list)-1] + "'"
+        elif (lines[i][:len("background-color=")] == "background-color="):
+            lines[i] = "background-color='" + color_list[0] + "'"
+
+    if not palette_exists:
+        lines.append(new_palette)
+        lines.append("foreground-color='" + color_list[len(color_list)-1] + "'")
+        lines.append("background-color='" + color_list[0] + "'")
+
 
 
 elif TERMINAL == "terminator":
