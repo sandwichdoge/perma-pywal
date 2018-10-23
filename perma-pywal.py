@@ -14,7 +14,7 @@ IMPORTANT
 >It's best to run this on an already working terminal config, this will not magically fix your broken terminal
 
 SUPPORTED TERMINALS SO FAR:
-xfce-terminal, urxvt
+xfce-terminal, urxvt, gnome-terminal
 '''
 
 
@@ -26,8 +26,9 @@ def fcopy(src, dst):
     f2.close()
 
 
+#[urxvt]return color number if it's a color config line
 def is_urxvt_color_conf_line(line):
-    p = re.compile(r'\x2A\x2Ecolor(\d+)\x3A')
+    p = re.compile(r'\x2A\x2Ecolor(\d+)\x3A') #*.color0
     oRE = p.findall(line)
     if (oRE): return oRE[0]
     return None
@@ -47,8 +48,15 @@ def apply_configs(terminal):
 
 
 
-TERMINAL = "gnome-terminal"
+#MAIN
+SUPPORTED_TERMINALS = ["xfce-terminal", "urxvt", "gnome-terminal"]
 HOMEDIR = str(pathlib.Path.home())
+print("What's your terminal?", SUPPORTED_TERMINALS)
+TERMINAL = input()
+if not TERMINAL in SUPPORTED_TERMINALS:
+    print("Only these terminals are supported:", SUPPORTED_TERMINALS)
+    exit()
+
 
 pywal_conf = open(HOMEDIR + "/.cache/wal/colors", "r")
 colors_str = str(pywal_conf.read())
@@ -88,7 +96,6 @@ elif TERMINAL == "urxvt":
 
     lines = content.splitlines()
     for i in range(len(lines)):
-        #print("li", lines[i][:len("*.color" + str(i)) -1], i)
         color_no = is_urxvt_color_conf_line(lines[i])
         if (color_no):
             lines[i] = "*.color" + color_no + ":" + color_list[int(color_no)]
@@ -115,7 +122,6 @@ elif TERMINAL == "gnome-terminal":
             lines[i] = new_palette
 
 
-
 new_conf = "\n".join(lines)
 conf_fd.write(new_conf)
 conf_fd.close()
@@ -123,4 +129,4 @@ conf_fd.close()
 apply_configs(TERMINAL) #apply configs and possibly refresh terminal settings
 
 
-print("Done")
+print("Done. If there's no effect, try restarting your terminal.")
