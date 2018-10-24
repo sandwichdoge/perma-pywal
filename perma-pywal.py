@@ -15,7 +15,7 @@ IMPORTANT
 >It's best to run this on an already working terminal config, this will not magically fix your broken terminal
 
 SUPPORTED TERMINALS SO FAR:
-xfce-terminal, urxvt, gnome-terminal, terminator
+xfce-terminal, urxvt, xterm, gnome-terminal, terminator
 '''
 
 
