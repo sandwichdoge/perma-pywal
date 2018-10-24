@@ -2,6 +2,7 @@
 import pathlib
 import re
 import subprocess
+from os import path
 
 
 '''
@@ -49,13 +50,16 @@ def apply_configs(terminal):
 
 
 #MAIN
-SUPPORTED_TERMINALS = ["xfce-terminal", "urxvt", "xterm", "gnome-terminal", "terminator"]
+SUPPORTED_TERMINALS = ["xfce4-terminal", "urxvt", "xterm", "gnome-terminal", "terminator"]
 HOMEDIR = str(pathlib.Path.home())
-print("What's your terminal?", SUPPORTED_TERMINALS)
-TERMINAL = input()
-if not TERMINAL in SUPPORTED_TERMINALS:
-    print("Only these terminals are supported:", SUPPORTED_TERMINALS)
-    exit()
+
+
+USER_TERMINALS = list()
+for t in SUPPORTED_TERMINALS:
+    out = subprocess.check_output(["whereis", t]).decode("utf-8")
+    if (out != t+':'+'\n'): USER_TERMINALS.append(t)
+    
+print("Detected terminals:", USER_TERMINALS)
 
 
 pywal_conf = open(HOMEDIR + "/.cache/wal/colors", "r")
@@ -66,104 +70,118 @@ color_list = colors_str.splitlines()
 total = len(color_list)
 #print(color_list)
 
-if TERMINAL == "xfce-terminal":
-    #XFCE-terminal
-    config_path = HOMEDIR + "/.config/xfce4/terminal/terminalrc"
-    fcopy(config_path, config_path + ".bak")
+for TERMINAL in USER_TERMINALS:
+    print("Configuring", TERMINAL)
 
-    with open(config_path, "r") as conf_fd:
-        content = conf_fd.read()
+    if TERMINAL == "xfce4-terminal":
+        #XFCE-terminal
+        config_path = HOMEDIR + "/.config/xfce4/terminal/terminalrc"
+        if not path.exists(config_path):
+            print("Error. Config file", config_path, "does not exist.")
+            continue
 
-    conf_fd = open(config_path, "w+")
-    new_palette = "ColorPalette=" + ";".join(color_list)
+        fcopy(config_path, config_path + ".bak")
 
-    lines = content.splitlines()
-    for i in range(len(lines)):
-        if (lines[i][:len("ColorPalette")] == "ColorPalette"):
-            lines[i] = new_palette
-        elif (lines[i][:len("ColorForeground=")] == "ColorForeground="):
-            lines[i] = "ColorForeground=" + color_list[len(color_list)-1]
-        elif (lines[i][:len("ColorBackground=")] == "ColorBackground="):
-            lines[i] = "ColorBackground=" + color_list[0]
-            
+        with open(config_path, "r") as conf_fd:
+            content = conf_fd.read()
 
-elif TERMINAL == "urxvt" or TERMINAL == "xterm":
-    #urxvt
-    config_path = HOMEDIR + "/.Xresources"
-    fcopy(config_path, config_path + ".bak")
+        conf_fd = open(config_path, "w+")
+        new_palette = "ColorPalette=" + ";".join(color_list)
 
-    with open(config_path, "r") as conf_fd:
-        content = conf_fd.read()
-    
-    conf_fd = open(config_path, "w+")
+        lines = content.splitlines()
+        for i in range(len(lines)):
+            if (lines[i][:len("ColorPalette")] == "ColorPalette"):
+                lines[i] = new_palette
+            elif (lines[i][:len("ColorForeground=")] == "ColorForeground="):
+                lines[i] = "ColorForeground=" + color_list[len(color_list)-1]
+            elif (lines[i][:len("ColorBackground=")] == "ColorBackground="):
+                lines[i] = "ColorBackground=" + color_list[0]
+                
 
-    lines = content.splitlines()
-    for i in range(len(lines)):
-        color_no = is_urxvt_color_conf_line(lines[i])
-        if (color_no):
-            lines[i] = "*.color" + color_no + ":" + color_list[int(color_no)]
-        elif (lines[i][:len("*.foreground:")] == "*.foreground:"):
-            lines[i] = "*.foreground:" + color_list[len(color_list)-1]
-        elif (lines[i][:len("*.background:")] == "*.background:"):
-            lines[i] = "*.background:" + color_list[0]
+    elif TERMINAL == "urxvt" or TERMINAL == "xterm":
+        #urxvt
+        config_path = HOMEDIR + "/.Xresources"
+        if not path.exists(config_path):
+            print("Error. Config file", config_path, "does not exist.")
+            continue
 
+        fcopy(config_path, config_path + ".bak")
 
-elif TERMINAL == "gnome-terminal":
-    #gnome-terminal
+        with open(config_path, "r") as conf_fd:
+            content = conf_fd.read()
+        
+        conf_fd = open(config_path, "w+")
 
-    palette_exists = 0 #whether palette has been set in config file
-    #dconf dump /org/gnome/terminal/
-    content = subprocess.check_output(["dconf", "dump", "/org/gnome/terminal/"])
-    if not content: exit()
-
-    conf_fd = open("gterm_conf.txt", "w+")
-    new_palette = "palette=['" + "', '".join(color_list) + "']"
-
-    lines = content.splitlines()
-    for i in range(len(lines)):
-        lines[i] = lines[i].decode("utf-8")
-        if (lines[i][:len("palette=[")] == "palette=["):
-            lines[i] = new_palette
-            palette_exists = 1
-        elif (lines[i][:len("foreground-color=")] == "foreground-color="):
-            lines[i] = "foreground-color='" + color_list[len(color_list)-1] + "'"
-        elif (lines[i][:len("background-color=")] == "background-color="):
-            lines[i] = "background-color='" + color_list[0] + "'"
-
-    if not palette_exists:
-        lines.append(new_palette)
-        lines.append("foreground-color='" + color_list[len(color_list)-1] + "'")
-        lines.append("background-color='" + color_list[0] + "'")
+        lines = content.splitlines()
+        for i in range(len(lines)):
+            color_no = is_urxvt_color_conf_line(lines[i])
+            if (color_no):
+                lines[i] = "*.color" + color_no + ":" + color_list[int(color_no)]
+            elif (lines[i][:len("*.foreground:")] == "*.foreground:"):
+                lines[i] = "*.foreground:" + color_list[len(color_list)-1]
+            elif (lines[i][:len("*.background:")] == "*.background:"):
+                lines[i] = "*.background:" + color_list[0]
 
 
+    elif TERMINAL == "gnome-terminal":
+        #gnome-terminal
+        palette_exists = 0 #whether palette has been set in config file
+        #dconf dump /org/gnome/terminal/
+        content = subprocess.check_output(["dconf", "dump", "/org/gnome/terminal/"])
+        if not content: exit()
 
-elif TERMINAL == "terminator":
-    #terminator
-    config_path = HOMEDIR + "/.config/terminator/config"
-    fcopy(config_path, config_path + ".bak")
+        conf_fd = open("gterm_conf.txt", "w+")
+        new_palette = "palette=['" + "', '".join(color_list) + "']"
 
-    with open(config_path, "r") as conf_fd:
-        content = conf_fd.read()
+        lines = content.splitlines()
+        for i in range(len(lines)):
+            lines[i] = lines[i].decode("utf-8")
+            if (lines[i][:len("palette=[")] == "palette=["):
+                lines[i] = new_palette
+                palette_exists = 1
+            elif (lines[i][:len("foreground-color=")] == "foreground-color="):
+                lines[i] = "foreground-color='" + color_list[len(color_list)-1] + "'"
+            elif (lines[i][:len("background-color=")] == "background-color="):
+                lines[i] = "background-color='" + color_list[0] + "'"
 
-    conf_fd = open(config_path, "w+")
-    new_palette = 'palette = "' + ':'.join(color_list) + '"'
-
-    lines = content.splitlines()
-    for i in range(len(lines)):
-        lines[i] = lines[i].strip(' ')
-        if (lines[i][:len('palette = "')] == 'palette = "'):
-            lines[i] = new_palette
-        elif (lines[i][:len('foreground_color = "')] == 'foreground_color = "'):
-            lines[i] = 'foreground_color = "' + color_list[len(color_list)-1] + '"'
-        elif (lines[i][:len('background_color = "')] == 'background_color = "'):
-            lines[i] = 'background_color = "' + color_list[0] + '"'
+        if not palette_exists:
+            lines.append(new_palette)
+            lines.append("foreground-color='" + color_list[len(color_list)-1] + "'")
+            lines.append("background-color='" + color_list[0] + "'")
 
 
-new_conf = "\n".join(lines)
-conf_fd.write(new_conf)
-conf_fd.close()
 
-apply_configs(TERMINAL) #apply configs and possibly reload terminal settings
+    elif TERMINAL == "terminator":
+        #terminator
+        config_path = HOMEDIR + "/.config/terminator/config"
+        if not path.exists(config_path):
+            print("Error. Config file", config_path, "does not exist.")
+            continue
+
+        fcopy(config_path, config_path + ".bak")
+
+        with open(config_path, "r") as conf_fd:
+            content = conf_fd.read()
+
+        conf_fd = open(config_path, "w+")
+        new_palette = 'palette = "' + ':'.join(color_list) + '"'
+
+        lines = content.splitlines()
+        for i in range(len(lines)):
+            lines[i] = lines[i].strip(' ')
+            if (lines[i][:len('palette = "')] == 'palette = "'):
+                lines[i] = new_palette
+            elif (lines[i][:len('foreground_color = "')] == 'foreground_color = "'):
+                lines[i] = 'foreground_color = "' + color_list[len(color_list)-1] + '"'
+            elif (lines[i][:len('background_color = "')] == 'background_color = "'):
+                lines[i] = 'background_color = "' + color_list[0] + '"'
+
+
+    new_conf = "\n".join(lines)
+    conf_fd.write(new_conf)
+    conf_fd.close()
+
+    apply_configs(TERMINAL) #apply configs and possibly reload terminal settings
 
 
 print("Done. If there's no effect, try restarting your terminal.")
